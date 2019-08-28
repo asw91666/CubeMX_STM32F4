@@ -164,24 +164,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)     //overflow inter
   
 }
 
-/*
-//수신 인터럽트 
-void HAL_UART_RxCpltCallBack(UART_HandleTypeDef *huart)
-{
-      g_RxFlag++;
-      
-  if(huart == &huart6)
-  {
-      g_RxFlag++;
-    tx_len = sizeof(tx_buffer) -1;
-    HAL_UART_Transmit(&huart6, tx_buffer, tx_len, HAL_MAX_DELAY);
-    
-    uart_flag = 1;
-    
-  }
-  
-}
-*/
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -190,22 +172,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     {
         
       g_RxFlag++;
-        /* Return Rx Value for Echo */             
-        if(rx_buffer[0] == '\r' || rx_buffer[0] == '\n')
-        {
-            /*  HAL 환경에서 USART 송신은 이렇게 하면 된다. */
-            uint8_t send_data[2] = {'\r','\n'};
-            HAL_UART_Transmit(&huart6, tx_buffer, tx_len, HAL_MAX_DELAY);
-        }
-        else
-        {
-            HAL_UART_Transmit(&huart6, tx_buffer, tx_len, HAL_MAX_DELAY);
-        }
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_10);
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_11);
         
-        
-        
-        /* 이 줄을 빼 버리면, 인터럽트가 다시 활성화되지 않는다. */
-        HAL_UART_Receive_IT(&huart6, (uint8_t*)rx_buffer, 1);
+      /* 이 줄을 빼 버리면, 인터럽트가 다시 활성화되지 않는다. */
+      HAL_UART_Receive_IT(&huart6, (uint8_t*)rx_buffer, 1);
         
     }
     
