@@ -61,11 +61,11 @@ DMA_HandleTypeDef hdma_usart6_rx;
 #define RX_BUFFER_SIZE          1
 
 uint8_t tx_buffer[] = "Message Received!\r\n";
-uint8_t rx_buffer[RX_BUFFER_SIZE];
+uint8_t rx_buffer[RX_BUFFER_SIZE] = {0};
 
 uint8_t tx_len;
 
-int16_t accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, tmpr;        //accel(���ӵ�)
+int16_t accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, tmpr;        //accel(가속도)
 
 
 int g_Timer9_cnt1;
@@ -76,13 +76,14 @@ uint16_t encoder_cnt;
 int Pin_State;
 int flag;
 int uart_flag;
+int g_RxFlag;
 
-//RCȸ�� ����
+//RC회로 변수
 //double input;
 uint16_t filter_ADC[2];
 double alpha = 0.05;
 
-//filter_output = alpha * input + (1-alpha) * filter_output  �ϸ� RCȸ�ΰ� �ϼ��Ǵ°ž�.
+//filter_output = alpha * input + (1-alpha) * filter_output  하면 RC회로가 완성되는거야.
 
 /* USER CODE END PV */
 
@@ -141,13 +142,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)     //overflow inter
   if(cnt == 1000)
   {
     
-    /*
-    tx_len = sizeof(tx_buffer) -1;
+    //UART trasmit (tx_buffer 내용)
+    //tx_len = sizeof(tx_buffer) -1;
     //HAL_UART_Transmit(&huart6, tx_buffer, tx_len, HAL_MAX_DELAY);
-    uart_flag = 1;
-    */
     
-    MPU6050_GetData(&accel_x, &accel_y, &accel_z, &gyro_y, &gyro_z, &tmpr);
+    //uart_flag = 1;
+    
+    //MPU6050_GetData(&accel_x, &accel_y, &accel_z, &gyro_y, &gyro_z, &tmpr);
     cnt =0;
   }
   
@@ -163,15 +164,55 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)     //overflow inter
   
 }
 
-
+/*
+//수신 인터럽트 
 void HAL_UART_RxCpltCallBack(UART_HandleTypeDef *huart)
 {
+      g_RxFlag++;
+      
   if(huart == &huart6)
   {
-      HAL_UART_Transmit(&huart6, tx_buffer, tx_len, HAL_MAX_DELAY);
+      g_RxFlag++;
+    tx_len = sizeof(tx_buffer) -1;
+    HAL_UART_Transmit(&huart6, tx_buffer, tx_len, HAL_MAX_DELAY);
+    
+    uart_flag = 1;
+    
   }
   
 }
+*/
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    /* USART를 동시에 여러 개 사용하더라도, 콜백 함수는 하나면 된다. 구분은 이렇게 한다. */
+    if(huart->Instance == USART6)
+    {
+        
+      g_RxFlag++;
+        /* Return Rx Value for Echo */             
+        if(rx_buffer[0] == '\r' || rx_buffer[0] == '\n')
+        {
+            /*  HAL 환경에서 USART 송신은 이렇게 하면 된다. */
+            uint8_t send_data[2] = {'\r','\n'};
+            HAL_UART_Transmit(&huart6, tx_buffer, tx_len, HAL_MAX_DELAY);
+        }
+        else
+        {
+            HAL_UART_Transmit(&huart6, tx_buffer, tx_len, HAL_MAX_DELAY);
+        }
+        
+        
+        
+        /* 이 줄을 빼 버리면, 인터럽트가 다시 활성화되지 않는다. */
+        HAL_UART_Receive_IT(&huart6, (uint8_t*)rx_buffer, 1);
+        
+    }
+    
+    
+}
+
+
 
 
 /* USER CODE END 0 */
@@ -231,10 +272,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    //HAL_UART_Receive_IT(&huart6, (uint8_t*)rx_buffer, 1);   
+    
 //    HAL_UART_Receive();
     
 //    if(flag == 0){
-//      //LD2 �� 0.5�ʰ������� ���
+//      //LD2 가 0.5초간격으로 토글
 //      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10,GPIO_PIN_SET);
 //      
 //      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11,GPIO_PIN_SET);
